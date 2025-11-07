@@ -30,12 +30,16 @@
         --knob: 34px;
         --knob-gap: 3px;
 
-        /* Wave */
-        --wave-h: 48px;                 /* altura da onda (baixa) */
-        --wave: #0b3d91;                /* azul escuro no tema claro */
+        /* Wave area (height) */
+        --wave-h: 64px;
+
+        /* Wave colors (light theme) */
+        --wave-1: #0b3d91;   /* main dark blue */
+        --wave-2: #154aa8;   /* slightly lighter */
+        --wave-3: #1f5cc7;   /* even lighter */
       }
 
-      /* Dark tokens */
+      /* Dark theme tokens */
       .dark {
         --bg: #000000;
         --fg: #e9e9e9;
@@ -44,16 +48,16 @@
         --header-fg: #f5f5f5;
         --footer-bg: #0f0f0f;
 
-        --wave: #6ec1ff;               /* azul claro no tema escuro */
+        /* Wave colors (dark theme) */
+        --wave-1: #6ec1ff;
+        --wave-2: #5ab5ff;
+        --wave-3: #47a9ff;
       }
 
       * { box-sizing: border-box; }
 
-      /* Apply background on html AND body to beat some mobile overrides */
       html, body { background: var(--bg); }
-
-      /* Help the browser choose proper default colors (forms/scrollbars, etc.) */
-      html { color-scheme: light; }    /* JS alterna para 'dark' quando ON */
+      html { color-scheme: light; } /* JS toggles to dark */
 
       body {
         margin: 0;
@@ -63,8 +67,6 @@
         flex-direction: column;
         min-height: 100vh;
         transition: background 0.25s ease, color 0.25s ease;
-        padding-bottom: var(--wave-h); /* espaço para a onda não cobrir o conteúdo */
-        position: relative;
       }
 
       header {
@@ -133,29 +135,40 @@
         body, header, footer, .switch, .knob, #fx-overlay { transition: none !important; }
       }
 
-      /* ====== Ocean wave at the bottom ====== */
-      .wave {
-        position: fixed;
-        left: 0; right: 0; bottom: 0;
+      /* ====== Fluid ocean waves (above footer) ====== */
+      .wave-bar {
+        position: relative;
         height: var(--wave-h);
-        pointer-events: none;
-        z-index: 4;
         overflow: hidden;
+        /* separates visually from main; no pointer events needed */
+        pointer-events: none;
       }
-      .wave__svg {
+
+      .wave-svg {
         display: block;
-        width: 200%;              /* duas “tiles” lado a lado para loop sem emenda */
+        width: 200%;     /* 2 tiles side-by-side for seamless loop */
         height: 100%;
       }
-      .wave__inner {
-        animation: waveMove 12s linear infinite; /* velocidade do deslocamento */
-      }
-      .wave__path { fill: var(--wave); }         /* cor da onda por tema */
 
-      @keyframes waveMove {
-        from { transform: translateX(0); }
-        to   { transform: translateX(-50%); }    /* desloca exatamente uma “tile” */
+      .wave-layer {
+        will-change: transform;
+        transform: translateX(0);
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
       }
+
+      /* three layers = parallax */
+      .wave-layer--back   { animation-name: waveMoveBack;   animation-duration: 22s; }
+      .wave-layer--mid    { animation-name: waveMoveMid;    animation-duration: 16s; }
+      .wave-layer--front  { animation-name: waveMoveFront;  animation-duration: 10s; }
+
+      .wave-path--back  { fill: var(--wave-1); opacity: 0.35; }
+      .wave-path--mid   { fill: var(--wave-2); opacity: 0.55; }
+      .wave-path--front { fill: var(--wave-3); opacity: 0.9;  }
+
+      @keyframes waveMoveBack  { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @keyframes waveMoveMid   { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @keyframes waveMoveFront { from { transform: translateX(0); } to { transform: translateX(-50%); } }
     </style>
   </head>
   <body>
@@ -177,29 +190,61 @@
       </div>
     </main>
 
-    <footer>© 2025 aandersondemelo</footer>
-
-    <!-- Ocean wave (fixed at bottom) -->
-    <div class="wave" aria-hidden="true">
-      <svg class="wave__svg" viewBox="0 0 144 48" preserveAspectRatio="none">
+    <!-- FLUID WAVES (now above the footer) -->
+    <div class="wave-bar" aria-hidden="true">
+      <svg class="wave-svg" viewBox="0 0 144 64" preserveAspectRatio="none">
         <defs>
-          <!-- Onda baixa, contínua e “tileable” (largura 144, altura 48) -->
-          <path id="tile"
-            d="M0,24
-               Q18,12 36,24
-               T72,24
-               T108,24
-               T144,24
-               L144,48 L0,48 Z" />
+          <!-- Three seamless wave tiles, offset & amplitude varied for realism -->
+
+          <!-- BACK: gentle, long wavelength -->
+          <path id="waveTileBack"
+            d="M0,40
+               C12,36 24,36 36,40
+               C48,44 60,44 72,40
+               C84,36 96,36 108,40
+               C120,44 132,44 144,40
+               L144,64 L0,64 Z" />
+
+          <!-- MID: medium amplitude -->
+          <path id="waveTileMid"
+            d="M0,42
+               C12,34 24,34 36,42
+               C48,50 60,50 72,42
+               C84,34 96,34 108,42
+               C120,50 132,50 144,42
+               L144,64 L0,64 Z" />
+
+          <!-- FRONT: slightly higher amplitude & different phase -->
+          <path id="waveTileFront"
+            d="M0,44
+               C12,30 24,30 36,44
+               C48,58 60,58 72,44
+               C84,30 96,30 108,44
+               C120,58 132,58 144,44
+               L144,64 L0,64 Z" />
         </defs>
 
-        <!-- Duas tiles lado a lado: animamos o grupo para mover -50% -->
-        <g class="wave__inner">
-          <use href="#tile" class="wave__path" x="0" />
-          <use href="#tile" class="wave__path" x="144" />
+        <!-- BACK layer -->
+        <g class="wave-layer wave-layer--back">
+          <use href="#waveTileBack"  class="wave-path--back"  x="0" />
+          <use href="#waveTileBack"  class="wave-path--back"  x="144" />
+        </g>
+
+        <!-- MID layer (slightly different speed gives parallax feel) -->
+        <g class="wave-layer wave-layer--mid">
+          <use href="#waveTileMid"   class="wave-path--mid"   x="0" />
+          <use href="#waveTileMid"   class="wave-path--mid"   x="144" />
+        </g>
+
+        <!-- FRONT layer (fastest, highest amplitude) -->
+        <g class="wave-layer wave-layer--front">
+          <use href="#waveTileFront" class="wave-path--front" x="0" />
+          <use href="#waveTileFront" class="wave-path--front" x="144" />
         </g>
       </svg>
     </div>
+
+    <footer>© 2025 aandersondemelo</footer>
 
     <script>
       const btn = document.getElementById('toggle');
@@ -218,7 +263,7 @@
         meta.setAttribute('content', color);
       }
 
-      // explicitly tell browser which color-scheme is active
+      // tell browser which color-scheme is active
       function updateColorScheme(on) {
         document.documentElement.style.colorScheme = on ? 'dark' : 'light';
         let meta = document.querySelector('meta[name="color-scheme"]');
