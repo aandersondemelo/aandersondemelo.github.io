@@ -24,9 +24,6 @@
         --switch-h: 40px;
         --knob: 34px;
         --knob-gap: 3px;
-
-        /* used for cross-fade overlay; JS updates this before toggling */
-        --fx-bg: #ffffff;
       }
 
       body.dark {
@@ -157,27 +154,28 @@
         .switch { border-width: 2px; }
       }
 
-      /* ===== Smooth cross-fade overlay ===== */
-      body::after {
-        content: "";
+      /* ===== Cross-fade overlay element (robust on mobile) ===== */
+      #fx-overlay {
         position: fixed;
         inset: 0;
         pointer-events: none;
-        background: var(--fx-bg); /* previous background color */
+        background: transparent;
         opacity: 0;
         transition: opacity 0.35s ease;
+        will-change: opacity;
       }
-      body.fx-start::after { opacity: 1; }
 
       /* Respect reduced motion */
       @media (prefers-reduced-motion: reduce) {
-        body, header, footer, .switch, .knob, body::after {
+        body, header, footer, .switch, .knob, #fx-overlay {
           transition: none !important;
         }
       }
     </style>
   </head>
   <body>
+    <div id="fx-overlay" aria-hidden="true"></div>
+
     <header>🚧 My Website</header>
 
     <main>
@@ -201,11 +199,12 @@
       </div>
     </main>
 
-    <footer>© 2025 aandersondemelo</footer>
+    <footer>© 2025 My Name</footer>
 
     <script>
       const btn = document.getElementById('toggle');
       const stateTxt = document.getElementById('stateTxt');
+      const overlay = document.getElementById('fx-overlay');
       const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       function updateThemeColor(on) {
@@ -219,21 +218,21 @@
         meta.setAttribute('content', color);
       }
 
-      // Smooth cross-fade between themes
+      // Cross-fade using a real element (reliable on mobile)
       function crossfade(prevBg) {
-        if (prefersReduced) return; // skip if user prefers reduced motion
-        // set overlay color to the *previous* background
-        document.documentElement.style.setProperty('--fx-bg', prevBg);
-        // show overlay, then hide after transition
-        document.body.classList.add('fx-start');
-        clearTimeout(window.__fxTimer);
-        window.__fxTimer = setTimeout(() => {
-          document.body.classList.remove('fx-start');
-        }, 350);
+        if (prefersReduced) return;
+        overlay.style.background = prevBg;
+        overlay.style.opacity = '1';
+        // force reflow then fade out
+        void overlay.offsetHeight;
+        overlay.style.opacity = '0';
       }
+      // Ensure overlay ends hidden even if transition is interrupted
+      overlay.addEventListener('transitionend', () => {
+        overlay.style.opacity = '0';
+      });
 
       function setMode(on, persist = true) {
-        // capture the current background BEFORE toggling
         const prevBg = getComputedStyle(document.body).getPropertyValue('--bg').trim();
         crossfade(prevBg);
 
@@ -247,10 +246,14 @@
       // init: saved preference or system theme
       const saved = localStorage.getItem('nightMode');
       if (saved === 'on' || saved === 'off') {
-        setMode(saved === 'on', false);
+        // no crossfade on first paint
+        const isOn = saved === 'on';
+        document.body.classList.toggle('dark', isOn);
+        btn.setAttribute('aria-checked', isOn ? 'true' : 'false');
+        stateTxt.textContent = isOn ? 'ON' : 'OFF';
+        updateThemeColor(isOn);
       } else {
         const media = window.matchMedia('(prefers-color-scheme: dark)');
-        // no crossfade on first paint
         document.body.classList.toggle('dark', media.matches);
         btn.setAttribute('aria-checked', media.matches ? 'true' : 'false');
         stateTxt.textContent = media.matches ? 'ON' : 'OFF';
