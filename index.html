@@ -14,8 +14,6 @@
 
     <!-- Tell browsers what schemes you support; JS below will update this meta dynamically -->
     <meta name="color-scheme" content="light">
-
-    <!-- Safari hint (optional) -->
     <meta name="supported-color-schemes" content="light dark">
 
     <style>
@@ -31,6 +29,10 @@
         --switch-h: 40px;
         --knob: 34px;
         --knob-gap: 3px;
+
+        /* Wave */
+        --wave-h: 48px;                 /* altura da onda (baixa) */
+        --wave: #0b3d91;                /* azul escuro no tema claro */
       }
 
       /* Dark tokens */
@@ -41,14 +43,14 @@
         --header-bg: #000000;
         --header-fg: #f5f5f5;
         --footer-bg: #0f0f0f;
+
+        --wave: #6ec1ff;               /* azul claro no tema escuro */
       }
 
       * { box-sizing: border-box; }
 
       /* Apply background on html AND body to beat some mobile overrides */
-      html, body {
-        background: var(--bg);
-      }
+      html, body { background: var(--bg); }
 
       /* Help the browser choose proper default colors (forms/scrollbars, etc.) */
       html { color-scheme: light; }    /* JS alterna para 'dark' quando ON */
@@ -61,6 +63,8 @@
         flex-direction: column;
         min-height: 100vh;
         transition: background 0.25s ease, color 0.25s ease;
+        padding-bottom: var(--wave-h); /* espaço para a onda não cobrir o conteúdo */
+        position: relative;
       }
 
       header {
@@ -73,12 +77,7 @@
         transition: background 0.25s ease, color 0.25s ease;
       }
 
-      main {
-        flex: 1;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-      }
+      main { flex: 1; display: grid; place-items: center; padding: 24px; }
 
       .center-stack { display: grid; gap: 16px; justify-items: center; }
       .coming-soon { text-align: center; font-size: 2rem; font-weight: 700; color: var(--fg); }
@@ -128,9 +127,34 @@
       #fx-overlay {
         position: fixed; inset: 0; pointer-events: none;
         background: transparent; opacity: 0; transition: opacity 0.35s ease; will-change: opacity;
+        z-index: 5;
       }
       @media (prefers-reduced-motion: reduce) {
         body, header, footer, .switch, .knob, #fx-overlay { transition: none !important; }
+      }
+
+      /* ====== Ocean wave at the bottom ====== */
+      .wave {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        height: var(--wave-h);
+        pointer-events: none;
+        z-index: 4;
+        overflow: hidden;
+      }
+      .wave__svg {
+        display: block;
+        width: 200%;              /* duas “tiles” lado a lado para loop sem emenda */
+        height: 100%;
+      }
+      .wave__inner {
+        animation: waveMove 12s linear infinite; /* velocidade do deslocamento */
+      }
+      .wave__path { fill: var(--wave); }         /* cor da onda por tema */
+
+      @keyframes waveMove {
+        from { transform: translateX(0); }
+        to   { transform: translateX(-50%); }    /* desloca exatamente uma “tile” */
       }
     </style>
   </head>
@@ -155,6 +179,28 @@
 
     <footer>© 2025 aandersondemelo</footer>
 
+    <!-- Ocean wave (fixed at bottom) -->
+    <div class="wave" aria-hidden="true">
+      <svg class="wave__svg" viewBox="0 0 144 48" preserveAspectRatio="none">
+        <defs>
+          <!-- Onda baixa, contínua e “tileable” (largura 144, altura 48) -->
+          <path id="tile"
+            d="M0,24
+               Q18,12 36,24
+               T72,24
+               T108,24
+               T144,24
+               L144,48 L0,48 Z" />
+        </defs>
+
+        <!-- Duas tiles lado a lado: animamos o grupo para mover -50% -->
+        <g class="wave__inner">
+          <use href="#tile" class="wave__path" x="0" />
+          <use href="#tile" class="wave__path" x="144" />
+        </g>
+      </svg>
+    </div>
+
     <script>
       const btn = document.getElementById('toggle');
       const stateTxt = document.getElementById('stateTxt');
@@ -172,12 +218,9 @@
         meta.setAttribute('content', color);
       }
 
-      // NEW: explicitly tell browser which color-scheme is active
+      // explicitly tell browser which color-scheme is active
       function updateColorScheme(on) {
-        // CSS property (affects form controls/scrollbar and hints UA)
         document.documentElement.style.colorScheme = on ? 'dark' : 'light';
-
-        // META tag (some UAs read this for auto-dark heuristics)
         let meta = document.querySelector('meta[name="color-scheme"]');
         if (!meta) {
           meta = document.createElement('meta');
